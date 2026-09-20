@@ -53,6 +53,29 @@ En el panel de NPM, añade un **Proxy Host**:
 
 Pestaña **SSL**: pide el certificado *Request a new SSL Certificate* (Let's Encrypt), activa **Force SSL** y, si quieres HTTP/2, actívalo.
 
+> ⚠️ **Errores 504 en `node_modules/.vite/deps/cesium.js` (mapa que no carga)**:
+> el bundle dev de Cesium pesa ~10 MB y tarda un rato en servirse la primera vez.
+> La imagen ya lo pre-compila en el build, pero si te aparece igualmente:
+> 1. Espera ~1 min y recarga con Ctrl+Shift+R.
+> 2. Sube los timeouts de proxy de NPM (*Custom Locations* o en el host de NPM:
+>    `proxy_read_timeout 300s; proxy_send_timeout 300s;`).
+> 3. Mira los logs del contenedor durante la carga: `docker compose logs -f gev`.
+>    Si ves `new dependencies optimized... reloading`, recarga el navegador: es la
+>    optimización en caliente de Vite y solo pasa la primera vez.
+>
+> **Si en los logs ves `EACCES: permission denied, mkdir '/app/node_modules/.vite/deps_temp_...'`**
+> es que el contenedor lleva un volumen antiguo montado sobre la caché de Vite
+> (versiones previas de este compose lo montaban y Docker lo creaba como root).
+> Recrea con la versión actual del repo:
+>
+> ```bash
+> git pull
+> docker compose down -v          # elimina también el volumen viejo gev_vite_cache
+> docker compose up -d --build
+> # comprobación: debe listar contenido y ser de node:node
+> docker compose exec gev sh -c 'ls -ld /app/node_modules/.vite/deps | head -3'
+> ```
+
 DNS: crea un registro **A** de `god.movilab.es` apuntando a la IP pública del servidor (y ábrelo en la lista de seguridad de Oracle si no lo tienes ya en la regla del 80/443).
 
 ### Extra recomendado en NPM (pestaña Advanced)
@@ -98,7 +121,7 @@ docker compose up -d --build
 docker compose ps                # estado + healthcheck
 docker compose logs -f gev       # logs
 docker compose down              # parar
-docker compose down -v           # parar y borrar cachés (no borra data/env/.env)
+docker compose down -v           # parar y borrar volúmenes anónimos antiguos (no toca data/env/.env)
 ```
 
 El puerto 4173 solo está publicado en `127.0.0.1` del host y el tráfico con NPM va por la red interna de Docker, así que no hace falta abrir nada más en la lista de seguridad de Oracle: solo el 80/443 de NPM debe estar expuesto.

@@ -38,9 +38,9 @@ services:
       # Persiste el .env dentro del contenedor (el panel POWER UP no funciona
       # tras un proxy, así que las claves se editan en este archivo del host).
       - ./data/env/.env:/app/.env
-      # Cachés de Vite y datos en disco (TLEs de satélites, etc.)
-      - gev_vite_cache:/app/node_modules/.vite
-      - gev_app_cache:/app/.cache
+      # NOTA: sin volumen sobre node_modules/.vite — la caché de deps de Vite se
+      # pre-genera en el build y un volumen vacío sobre ella provocaría 504 en
+      # cesium.js en cada arranque.
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4173/", "-o", "/dev/null"]
       interval: 30s
@@ -59,6 +59,4 @@ networks:
   proxy_network:
     external: true
 
-volumes:
-  gev_vite_cache:
-  gev_app_cache:
+volumes: {}

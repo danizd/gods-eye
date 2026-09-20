@@ -39,6 +39,11 @@ RUN touch .env && chmod 600 .env
 RUN chown -R node:node /app
 USER node
 
+# Pre-compila la caché de dependencias de Vite en tiempo de build. Sin esto, el
+# PRIMER arranque genera en caliente node_modules/.vite/deps/cesium.js (~10 MB)
+# y las peticiones de esa URL pueden responder 504 tras el proxy hasta que acaba.
+RUN npx vite optimize || true
+
 EXPOSE 4173
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=5 \

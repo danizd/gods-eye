@@ -1,0 +1,11 @@
+# Acelera el contexto de build y evita meter cosas innecesarias en la imagen
+node_modules
+.git
+.github
+.env
+.env.*
+!.env.example
+pinokio
+docs/media
+*.log
+.DS_Store

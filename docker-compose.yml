@@ -1,0 +1,64 @@
+# God's Eye View — despliegue para servidor Oracle ARM (aarch64) detrás de Nginx Proxy Manager
+#
+# Uso:
+#   docker compose up -d --build
+#   docker compose logs -f gev
+#
+# El contenedor se une a la red externa "proxy_network" (la misma de Nginx Proxy
+# Manager) para que NPM lo alcance por nombre: forward a http://gev:4173
+# (IMPORTANTE: NPM corre en contenedor, así que 127.0.0.1:4173 NO le sirve).
+#
+# Claves API: edita ./data/env/.env en el host y ejecuta `docker compose restart gev`.
+# Detalles en DEPLOY.md.
+
+services:
+  gev:
+    build: .
+    image: gods-eye-view:latest
+    container_name: gev
+    restart: unless-stopped
+    ports:
+      # Solo loopback del host: útil para probar desde el propio servidor
+      # (curl http://127.0.0.1:4173). NPM accede por la red proxy_network.
+      - "127.0.0.1:4173:4173"
+    networks:
+      - proxy_network
+    environment:
+      HOST: 0.0.0.0
+      PORT: "4173"
+      # Rate-limits recomendados por el proyecto al exponer el servidor (por IP)
+      GEV_RATELIMIT_OPENAI_PER_MIN: "30"
+      GEV_RATELIMIT_GOOGLE_PER_MIN: "60"
+    env_file:
+      # Claves opcionales (Cesium ion, OpenAI, AISStream...). Crea este archivo
+      # antes del primer arranque: cp data/env/.env.example data/env/.env
+      - path: ./data/env/.env
+        required: false
+    volumes:
+      # Persiste el .env dentro del contenedor (el panel POWER UP no funciona
+      # tras un proxy, así que las claves se editan en este archivo del host).
+      - ./data/env/.env:/app/.env
+      # Cachés de Vite y datos en disco (TLEs de satélites, etc.)
+      - gev_vite_cache:/app/node_modules/.vite
+      - gev_app_cache:/app/.cache
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4173/", "-o", "/dev/null"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  # Red ya existente donde vive nginx-proxy-manager-app-1.
+  # Si tu red se llama distinto, cámbialo aquí (docker network ls).
+  proxy_network:
+    external: true
+
+volumes:
+  gev_vite_cache:
+  gev_app_cache:

@@ -1,8 +1,8 @@
 import {
   OVERPASS_MAX_RESPONSE_BYTES,
-  OVERPASS_UPSTREAMS,
   OVERPASS_USER_AGENT,
   OVERPASS_TIMEOUT_MS,
+  resolveOverpassUpstreams,
 } from './constants.js';
 import { readResponseTextCapped } from '../common/http.js';
 import { simplifyOverpassPayloadBody } from './geometry.js';
@@ -64,6 +64,10 @@ function overpassPayloadIsData(payload) {
  * Try each mirror once, retaining response-size and per-mirror timeout caps.
  * Refusals and body-level failures rotate; total failure returns the last
  * rate-limit payload, otherwise the first refusal, or throws a network error.
+ *
+ * Endpoints default to the env-configurable mirror list, resolved per call
+ * (NOT at import time — see resolveOverpassUpstreams): a datacenter operator
+ * edits `.env` and restarts without a rebuild.
  * @param {string} body URL-encoded Overpass QL query body.
  * @param {number} [maxResponseBytes] Endpoint-specific response cap.
  * @param {object} [options] Server-only endpoint and I/O overrides for tests.
@@ -73,7 +77,7 @@ async function fetchOverpassPayload(
   body,
   maxResponseBytes = OVERPASS_MAX_RESPONSE_BYTES,
   {
-    endpoints = OVERPASS_UPSTREAMS,
+    endpoints = resolveOverpassUpstreams(),
     fetchImpl = fetch,
     readBody = readResponseTextCapped,
     simplify = simplifyOverpassPayloadBody,

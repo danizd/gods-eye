@@ -1,5 +1,12 @@
 # Changelog
 
+- Make the Overpass proxy mirror list configurable via `OVERPASS_MIRRORS` (comma/space
+  separated hosts or full interpreter URLs), resolved per request so `.env` edits apply
+  without a rebuild. Datacenter IPs (Oracle/AWS/GCP) are routinely TCP-refused by the
+  Hetzner-hosted mirrors; operators can now list only the mirrors their server reaches
+  instead of paying a 22 s timeout per dead mirror on every fan-out. Documented in
+  DEPLOY.md with a full 502 troubleshooting section for the Docker deployment.
+
 - Distinguish PARTIAL vessel snapshots from STALE data in the layer panel, with
   accepted-record counts and unchanged retention, freshness and outage safeguards.
 
@@ -22,16 +29,13 @@
   with shared playback/seek interpolation, easing and holds. Navigation and
   manual input cancel authored motion; older scene files retain existing flights.
 
-
 - Director validates bounded version-3 scene files before replacing a project,
   preserves unreadable browser saves, migrates legacy bloom once and preserves
   zero-pitch/low-altitude camera and scope/detection edits. Project normalization has a separate owner.
 
-
 - Separate Director timing, seek calculations, playback clocks and registered
   scene-pack presentation rules. Preserve authored content and controls; Stop
   releases pending hold timers and stale ticks cannot affect replacement playback.
-
 
 - Keep parked transit vehicles aligned to their world course during camera orbits, fall back to reported bearing, and keep vehicles with no course consistently screen-up.
 
@@ -214,7 +218,6 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 ## [Unreleased]
 
 - Add bounded Director feature actions with accessible controls, explicit camera/layer admission and cancellation; restore pack geometry on same-shot seek. Preserve existing scenes and content attribution.
-
 
 - Give application request services, terrain/floor caches and annotation lookup state explicit owners and cancellation; share them across controls, layers and voice.
 

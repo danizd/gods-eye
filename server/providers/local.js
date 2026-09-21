@@ -72,6 +72,7 @@ export { readResponseJsonCapped } from './common/http.js';
 export { coalesceProxyRequest } from './common/http.js';
 export { requiredFiniteQueryNumber } from './common/query.js';
 export { isOverpassBoundaryQuery } from './overpass/query.js';
+export { resolveOverpassUpstreams } from './overpass/constants.js';
 export { simplifyOverpassPayloadBody } from './overpass/geometry.js';
 export { readOverpassDisk } from './overpass/cache.js';
 export { resolveOverpassPreflight } from './overpass/cache.js';

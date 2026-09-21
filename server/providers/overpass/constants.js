@@ -29,6 +29,52 @@ const OVERPASS_UPSTREAMS = [
 ];
 
 /**
+ * Env-configurable mirror list, resolved LAZILY per request (never at import
+ * time): Vite's loadEnv() copies `.env` into process.env after these modules
+ * evaluate, so a const array read here would silently ignore it — the same
+ * trap the OpenAI rate-limit module documented.
+ *
+ * `OVERPASS_MIRRORS` accepts a comma/space-separated list of hosts or full
+ * interpreter URLs. Datacenter deployments (Oracle/AWS/GCP free tiers) are
+ * routinely TCP-refused by overpass-api.de (Hetzner) while community mirrors
+ * answer fine, and a refused mirror costs a full OVERPASS_TIMEOUT_MS before
+ * rotation — so operators need a way to skip dead mirrors without a rebuild.
+ * Empty/garbage entries fall back to the built-in OVERPASS_UPSTREAMS.
+ *
+ * @returns {string[]} Ordered interpreter endpoint URLs to try.
+ */
+function resolveOverpassUpstreams() {
+  const raw = String(process.env.OVERPASS_MIRRORS || '').trim();
+  if (!raw) return OVERPASS_UPSTREAMS;
+  const parsed = [];
+  for (const entry of raw.split(/[\s,]+/)) {
+    if (!entry) continue;
+    try {
+      const url = new URL(
+        /^https?:\/\//i.test(entry) ? entry : `https://${entry}`,
+      );
+      // new URL() accepts junk hosts ('https://not' is 'valid'), so require a
+      // dot-separated domain, an IPv6 literal, or an explicit localhost.
+      const host = url.hostname;
+      const hostOk =
+        host === 'localhost' ||
+        host.includes(':') ||
+        (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host) && !host.endsWith('.'));
+      if (!hostOk || !url.protocol.match(/^https?:$/)) continue;
+      const pathname =
+        url.pathname && url.pathname !== '/'
+          ? url.pathname.replace(/\/+$/, '')
+          : '/api/interpreter';
+      const endpoint = `${url.protocol}//${url.host}${pathname}`;
+      if (!parsed.includes(endpoint)) parsed.push(endpoint);
+    } catch {
+      // Unparseable entry: skip it rather than poisoning the whole list.
+    }
+  }
+  return parsed.length ? parsed : OVERPASS_UPSTREAMS;
+}
+
+/**
  * TTL for FRESH cached Overpass responses (ms). Road geometry is static for
  * months — the original 45 s TTL forced a public-mirror round-trip on nearly
  * every viewport revisit and left nothing to serve when the mirrors 502
@@ -125,6 +171,7 @@ const OVERPASS_BBOX_RE =
   /\(\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*\)/;
 
 export {
+  resolveOverpassUpstreams,
   OVERPASS_BOUNDARY_DISK_TTL_MS,
   OVERPASS_DISK_TTL_MS,
   OVERPASS_DISK_DIR,
